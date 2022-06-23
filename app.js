@@ -31,11 +31,22 @@ app.post('/participants', async (req, res) => {
             return;
         }
         await db.collection('participants').insertOne({name: name, lastStatus: Date.now()});
-        await db.collection('messages').insertOne({from: name, to: 'Todos', text: 'entra na sala...', type: 'status', time: dayjs().format('HH:MM:SS')});
+        await db.collection('messages').insertOne({from: name, to: 'Todos', text: 'entra na sala...', type: 'status', time: dayjs().format("HH:MM:SS")});
         res.sendStatus(200);
-    } catch {
+    } catch (err) {
         res.sendStatus(500);
     }
 });
+
+app.get('/participants', async (req, res) => {
+    try {
+        const participants = await db.collection("participants").find({}).toArray();
+        res.send(participants);
+        console.log(participants)
+    } catch (err) {
+        res.sendStatus(500);
+    }  
+
+})
 
 app.listen(5000);
