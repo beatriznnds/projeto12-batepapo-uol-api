@@ -21,14 +21,12 @@ app.post('/participants', async (req, res) => {
     const { name } = req.body;
     const validUser = userSchema.validate({ name: name });
     if (validUser.error) {
-        res.sendStatus(422);
-        return;
+        return res.sendStatus(422);
     };
     try {
         const verificateUser = await db.collection("participants").findOne({ name: name });
         if (verificateUser) {
-            res.sendStatus(409);
-            return;
+            return res.sendStatus(409);
         }
         await db.collection("participants").insertOne({name: name, lastStatus: Date.now()});
         await db.collection("messages").insertOne({from: name, to: 'Todos', text: 'entra na sala...', type: 'status', time: dayjs().format("HH:MM:SS")});
@@ -45,26 +43,50 @@ app.get('/participants', async (req, res) => {
     } catch (err) {
         res.sendStatus(500);
     }  
-
 });
 
 app.post('/messages', async (req, res) => {
     const { to, text, type } = req.body;
-    const from = req.headers.User;
+    const from = req.headers.user;
     const validMessage = messageSchema.validate({ to: to, text: text, type: type, from: from});
+
     if (validMessage.error) {
-        res.sendStatus(422);
-        return;
+        return res.sendStatus(422);
     };
 
+    const verificateSender = await db.collection("participants").findOne({ name: from });
+    if (!verificateSender) {
+        return res.sendStatus(404);
+    };
+    
     try {
         await db.collection("messages").insertOne({from: from, to: to, text: text, type: type, time: dayjs().format("HH:MM:SS")});
         res.sendStatus(201);
     } catch (err) {
         res.sendStatus(500);
     }
-
 });
+
+app.get('/messages', async (req, res) => {
+    const limit = parseInt(req.query.limit);
+    const messages = await db.collection("messages").find({}).toArray();
+    const user = req.headers.body;
+    try {
+        const filteredMessages = messages.filter(message => message.from === user && message.to === user && message.type === 'message');
+        if (!limit) {
+            res.send(filteredMessages)
+        } else {
+            const lastMessages = filteredMessages.reverse();
+            res.send(lastMessages.slice(0, limit));
+        }
+    } catch (err) {
+        res.status(500).send();
+    }
+});
+
+app.post('status', async (req, res) => {
+    const { user } = req.headers
+})
 
 
 app.listen(5000);

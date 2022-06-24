@@ -13,6 +13,7 @@ const messageSchema = Joi.object ({
     type: Joi.string()
         .valid(('message', 'private_message')),
     from: Joi.string()
+        .required()
 })
 
 export { userSchema, messageSchema }
