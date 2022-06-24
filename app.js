@@ -84,9 +84,22 @@ app.get('/messages', async (req, res) => {
     }
 });
 
-app.post('status', async (req, res) => {
-    const { user } = req.headers
-})
+app.post('/status', async (req, res) => {
+    const { user } = req.headers;
+    const participantsColection = db.collection("participants");
+    const verificateSenderUser = await participantsColection.findOne({ name: user });
+    if (!verificateSenderUser) {
+        return res.sendStatus(404);
+    };
+    try {
+        await participantsColection.updateOne({
+            name: user
+        }, { $set: Date.now()});
+        res.sendStatus(200)
+    } catch (err) {
+        res.sendStatus(500);
+    }
+});
 
 
 app.listen(5000);
