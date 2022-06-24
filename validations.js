@@ -5,4 +5,14 @@ const userSchema = Joi.object({
         .required()
 });
 
-export {userSchema};
+const messageSchema = Joi.object ({
+    to: Joi.string()
+        .required(),
+    text: Joi.string()
+        .required(),
+    type: Joi.string()
+        .valid(('message', 'private_message')),
+    from: Joi.string()
+})
+
+export { userSchema, messageSchema }
