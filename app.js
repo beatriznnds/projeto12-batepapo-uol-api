@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from 'dayjs';
 import { userSchema, messageSchema } from './validations.js';
@@ -49,11 +49,9 @@ app.post('/messages', async (req, res) => {
     const { to, text, type } = req.body;
     const from = req.headers.user;
     const validMessage = messageSchema.validate({ to: to, text: text, type: type, from: from});
-
     if (validMessage.error) {
         return res.sendStatus(422);
     };
-
     const verificateSender = await db.collection("participants").findOne({ name: from });
     if (!verificateSender) {
         return res.sendStatus(404);
@@ -101,5 +99,20 @@ app.post('/status', async (req, res) => {
     }
 });
 
+async function removeInactiveUsers () {
+    const allParticipants = await db.collection("participants").find({}).toArray();
+    try {
+        for (let i = 0; i < allParticipants.length; i++) {
+            if (Date.now() - allParticipants[i].lastStatus > 10000) {
+                await db.collection("participants").deleteOne({ _id: new ObjectId(allParticipants[i]._id)});
+                await db.collection("messages").insertOne({from: allParticipants[i].name, to: 'Todos', text: 'sai da sala...', type: 'status', time: dayjs().format('HH:MM:SS')})
+            }
+        }
+    } catch (err) {
+        res.send(err)    
+    }
+};
+
+setInterval(removeInactiveUsers, 15000);
 
 app.listen(5000);
