@@ -10,9 +10,9 @@ const messageSchema = Joi.object ({
         .required(),
     text: Joi.string()
         .required(),
-    type: Joi.string()
-        .valid(('message', 'private_message')),
     from: Joi.string()
+        .required(),
+    type: Joi.string()
         .required()
 })
 
