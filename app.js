@@ -4,6 +4,7 @@ import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from 'dayjs';
 import { userSchema, messageSchema } from './validations.js';
+import { stripHtml } from "string-strip-html";
 
 const app = express();
 app.use(cors());
@@ -59,9 +60,7 @@ app.post('/messages', async (req, res) => {
     
     try {
         const message = {from: from, to: to, text: text, type: type, time: dayjs().format("HH:mm:ss")};
-        console.log(message)
         const result = await db.collection("messages").insertOne(message);
-        console.log(result)
         res.sendStatus(201);
     } catch (err) {
         res.sendStatus(500);
@@ -72,7 +71,6 @@ app.get('/messages', async (req, res) => {
     const limit = parseInt(req.query.limit);
     const messages = await db.collection("messages").find({}).toArray();
     const user = req.headers.user;
-    console.log(user)
     try {
         const filteredMessages = messages.filter(message => message.from === user || message.to === user || message.to === 'Todos');
         if (!limit) {
@@ -99,7 +97,6 @@ app.post('/status', async (req, res) => {
         }, { $set: {time: Date.now()}});
         res.sendStatus(200);
     } catch (err) {
-        console.log(err);
         res.sendStatus(500);
     }
 });
@@ -108,7 +105,6 @@ app.delete('/messages/:id', async (req,res) => {
     const { user } = req.headers;
     const { id } = req.params;
     const verifySenderMessage = await db.collection("messages").findOne({  _id: new ObjectId(id) });
-    console.log(verifySenderMessage)
     if (!verifySenderMessage) {
         return res.sendStatus(404);
     };
@@ -119,27 +115,55 @@ app.delete('/messages/:id', async (req,res) => {
            await db.collection("messages").deleteOne({_id: new ObjectId(id)});
         }
     } catch (err) {
-        console.log(err)
         return res.sendStatus(500);
-        llalala
     }
 
-})
+});
 
-// async function removeInactiveUsers () {
-//     const allParticipants = await db.collection("participants").find({}).toArray();
-//     try {
-//         for (const participant of allParticipants) {
-//             if (Date.now() - participant.lastStatus > 10000) {
-//                 await db.collection("participants").deleteOne({ _id: new ObjectId(participant._id)});
-//                 await db.collection("messages").insertOne({from: participant.name, to: 'Todos', text: 'sai da sala...', type: 'status', time: dayjs().format('HH:MM:SS')})
-//             }
-//         }
-//     } catch (err) {
-//         res.send(err)    
-//     }
-// };
+app.put(('/messages/:id', async (req, res) => {
+    const { to, text, type } = req.body;
+    const from = req.headers.user;
+    const { id } = req.params;
+    const validMessage = messageSchema.validate({ to: to, text: text, type: type, from: from});
+    if (validMessage.error) {
+        return res.sendStatus(422);
+    };
+    const verificateSender = await db.collection("participants").findOne({ name: from });
+    if (!verificateSender) {
+        return res.sendStatus(404);
+    };
+    try {
+        const findMessage = await db.collection("messages").findOne({ _id: new ObjectId(id) });
+        if (!findMessage) {
+            return res.sendStatus(404);
+        }
+        if (findMessage.from !== from) {
+            return res.sendStatus(401)
+        }
+        await db.collection("messages").updateOne({
+            name: from
+        }, { $set: {from: from, to: to, text: text, type: type, time: dayjs().format("HH:mm:ss")}});
+    } catch (err) {
+        res.sendStatus(500);
+    }
+}));
 
-// setInterval(removeInactiveUsers, 15000);
+
+
+async function removeInactiveUsers () {
+    const allParticipants = await db.collection("participants").find({}).toArray();
+    try {
+        for (const participant of allParticipants) {
+            if (Date.now() - participant.lastStatus > 10000) {
+                await db.collection("participants").deleteOne({ _id: new ObjectId(participant._id)});
+                await db.collection("messages").insertOne({from: participant.name, to: 'Todos', text: 'sai da sala...', type: 'status', time: dayjs().format('HH:MM:SS')})
+            }
+        }
+    } catch (err) {
+        res.send(err)    
+    }
+};
+
+setInterval(removeInactiveUsers, 15000);
 
 app.listen(5000);
