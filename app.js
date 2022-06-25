@@ -29,7 +29,7 @@ app.post('/participants', async (req, res) => {
         if (verifyUser) {
             return res.sendStatus(409);
         }
-        await db.collection("participants").insertOne({name: name, lastStatus: Date.now()});
+        await db.collection("participants").insertOne({name: stripHtml(name).result.trim(), lastStatus: Date.now()});
         await db.collection("messages").insertOne({from: name, to: 'Todos', text: 'entra na sala...', type: 'status', time: dayjs().format("HH:mm:ss")});
         res.sendStatus(201);
     } catch (err) {
@@ -59,7 +59,7 @@ app.post('/messages', async (req, res) => {
     };
     
     try {
-        const message = {from: from, to: to, text: text, type: type, time: dayjs().format("HH:mm:ss")};
+        const message = {from: stripHtml(from).result.trim(), to: stripHtml(to).result.trim(), text: stripHtml(text).result.trim(), type: type, time: dayjs().format("HH:mm:ss")};
         const result = await db.collection("messages").insertOne(message);
         res.sendStatus(201);
     } catch (err) {
@@ -142,7 +142,7 @@ app.put(('/messages/:id', async (req, res) => {
         }
         await db.collection("messages").updateOne({
             name: from
-        }, { $set: {from: from, to: to, text: text, type: type, time: dayjs().format("HH:mm:ss")}});
+        }, { $set: {from: stripHtml(from).result.trim(), to: stripHtml(to).result.trim(), text: stripHtml(text).result.trim(), type: type, time: dayjs().format("HH:mm:ss")}});
     } catch (err) {
         res.sendStatus(500);
     }
