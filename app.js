@@ -120,35 +120,6 @@ app.delete('/messages/:id', async (req,res) => {
 
 });
 
-app.put(('/messages/:id', async (req, res) => {
-    const { to, text, type } = req.body;
-    const from = req.headers.user;
-    const { id } = req.params;
-    const validMessage = messageSchema.validate({ to: to, text: text, type: type, from: from});
-    if (validMessage.error) {
-        return res.sendStatus(422);
-    };
-    const verificateSender = await db.collection("participants").findOne({ name: from });
-    if (!verificateSender) {
-        return res.sendStatus(404);
-    };
-    try {
-        const findMessage = await db.collection("messages").findOne({ _id: new ObjectId(id) });
-        if (!findMessage) {
-            return res.sendStatus(404);
-        }
-        if (findMessage.from !== from) {
-            return res.sendStatus(401)
-        }
-        await db.collection("messages").updateOne({
-            name: from
-        }, { $set: {from: stripHtml(from).result.trim(), to: stripHtml(to).result.trim(), text: stripHtml(text).result.trim(), type: type, time: dayjs().format("HH:mm:ss")}});
-    } catch (err) {
-        res.sendStatus(500);
-    }
-}));
-
-
 
 async function removeInactiveUsers () {
     const allParticipants = await db.collection("participants").find({}).toArray();
@@ -156,7 +127,7 @@ async function removeInactiveUsers () {
         for (const participant of allParticipants) {
             if (Date.now() - participant.lastStatus > 10000) {
                 await db.collection("participants").deleteOne({ _id: new ObjectId(participant._id)});
-                await db.collection("messages").insertOne({from: participant.name, to: 'Todos', text: 'sai da sala...', type: 'status', time: dayjs().format('HH:MM:SS')})
+                await db.collection("messages").insertOne({from: participant.name, to: 'Todos', text: 'sai da sala...', type: 'status', time: dayjs().format("HH:mm:ss")})
             }
         }
     } catch (err) {
